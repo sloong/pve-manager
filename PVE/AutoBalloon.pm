@@ -3,6 +3,23 @@ package PVE::AutoBalloon;
 use warnings;
 use strict;
 
+sub bytes_to_mb {
+    my ($bytes) = @_;
+    
+    # 将字节转换为 MB
+    my $mb = $bytes / (1024 * 1024);
+    
+    # 格式化为字符串，保留两位小数
+    return sprintf("%.2f MB", $mb);
+}
+
+sub round_up_to_size {
+    my ($bytes, $size_mb) = @_;
+    $size_mb //= 128;  # 默认大小为128MB
+    my $size = $size_mb * 1024 * 1024;  # 转换为字节
+    return int(($bytes + ($size - 1)) / $size) * $size;
+}
+
 sub compute_alg1 {
     my ($vmstatus, $goal, $maxchange, $debug) =  @_;
 
@@ -40,9 +57,26 @@ sub compute_alg1 {
 	    foreach my $vmid (@$idlist) {
 		next if defined($done_hash->{$vmid});
 		my $d = $vmstatus->{$vmid};
-		my $shares = $d->{shares} || 1000;
-		my $desired = $d->{balloon_min} + int(($alloc_new/$shares_total)*$shares);
 
+		####################################
+		my $used_memory = $d->{balloon} - $d->{freemem}; 
+		my $free_memory = $d->{freemem};
+		my $max_memory = $d->{maxmem};   
+		my $free_percentage = $free_memory / $max_memory;
+
+		# The desired balloon value is the free_percentage as 25%
+		my $desired;
+		if ($free_percentage > 0.3 ) {
+			$desired = $d->{balloon} * 0.75;
+		} elsif ($free_percentage < 0.2){
+			$desired = $max_memory * 0.75;
+		} else {
+			next;  
+		}
+		&$log("vm $vmid : free_percentage " . bytes_to_mb($free_memory) . " / " . bytes_to_mb($max_memory) . " => " . sprintf("%.2f", $free_percentage) . ", desired: " . bytes_to_mb($desired) . " / " . bytes_to_mb($d->{balloon}) . "\n");
+
+		####################################
+		
 		if ($desired > $d->{maxmem}) {
 		    $desired = $d->{maxmem};
 		    $repeat = 1;
@@ -141,7 +175,7 @@ sub compute_alg1 {
 	my $d = $vmstatus->{$vmid};
 	my $diff = int($res->{$vmid} - $d->{balloon});
 	my $absdiff = $diff < 0 ? -$diff : $diff;
-	&$log("BALLOON $vmid to $res->{$vmid} ($diff)\n");
+	# &$log("BALLOON $vmid to $res->{$vmid} ($diff)\n");
     }
     return $res;
 }

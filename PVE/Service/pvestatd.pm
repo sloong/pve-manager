@@ -219,8 +219,8 @@ sub auto_balloning {
     my $goal = int($hostmeminfo->{memtotal} * 0.8 - $hostmeminfo->{memused});
     $log->("host goal: $goal free: $hostfreemem total: $hostmeminfo->{memtotal}\n");
 
-    my $maxchange = 100*1024*1024;
-    my $res = PVE::AutoBalloon::compute_alg1($vmstatus, $goal, $maxchange);
+    my $maxchange = 512*1024*1024;
+    my $res = PVE::AutoBalloon::compute_alg1($vmstatus, $goal, $maxchange, $opt_debug);
 
     for my $vmid (sort keys %$res) {
 	my $target = int($res->{$vmid});
