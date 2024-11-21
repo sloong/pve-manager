@@ -5,18 +5,14 @@ use strict;
 
 sub bytes_to_mb {
     my ($bytes) = @_;
-    
-    # 将字节转换为 MB
     my $mb = $bytes / (1024 * 1024);
-    
-    # 格式化为字符串，保留两位小数
     return sprintf("%.2f MB", $mb);
 }
 
 sub round_up_to_size {
     my ($bytes, $size_mb) = @_;
-    $size_mb //= 128;  # 默认大小为128MB
-    my $size = $size_mb * 1024 * 1024;  # 转换为字节
+    $size_mb //= 128; 
+    my $size = $size_mb * 1024 * 1024; 
     return int(($bytes + ($size - 1)) / $size) * $size;
 }
 
@@ -64,12 +60,12 @@ sub compute_alg1 {
 		my $max_memory = $d->{maxmem};   
 		my $free_percentage = $free_memory / $max_memory;
 
-		# The desired balloon value is the free_percentage as 25%
+		# The desired balloon value is the free_percentage as 35%
 		my $desired;
-		if ($free_percentage > 0.3 ) {
-			$desired = $d->{balloon} * 0.75;
-		} elsif ($free_percentage < 0.2){
-			$desired = $max_memory * 0.75;
+		if ($free_percentage > 0.4 ) {
+			$desired = $d->{balloon} - $max_memory * 0.1;
+		} elsif ($free_percentage < 0.3){
+			$desired = $max_memory;
 		} else {
 			next;  
 		}
